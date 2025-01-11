@@ -7,15 +7,15 @@ import { generateSocialMediaPosts } from "./src/utils/groqClient.js";
 const bot = new Telegraf(process.env.BOT_KEY);
 
 try {
-  connectDB();
+  await connectDB();
 } catch (error) {
   console.error("Database connection error:", error);
   process.exit(1);
 }
 
+
 bot.start(async (ctx) => {
   const from = ctx.update.message.from;
-  console.log(from);
 
   try {
     await User.findOneAndUpdate(
@@ -71,14 +71,14 @@ bot.command("generate", async (ctx) => {
       { tgId: from.id },
       {
         $inc: {
-          promptToken: 1, // Example for incrementing tokens
-          completionTokens: 1,
+          promptToken: generatedText.usage.promptTokens, 
+          completionTokens: generatedText.usage.completionTokens,
         },
       }
     );
 
     await ctx.deleteMessage(waitingMessageId);
-    await ctx.reply(generatedText);
+    await ctx.reply(generatedText.choices[0]?.message?.content);
   } catch (error) {
     console.error("Error in /generate:", error);
     await ctx.deleteMessage(waitingMessageId);

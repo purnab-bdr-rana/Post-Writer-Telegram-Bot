@@ -23,7 +23,7 @@ const generateSocialMediaPosts = async (events) => {
     model: "llama-3.3-70b-versatile",
   });
 
-  return chatCompletion.choices[0]?.message?.content;
+  return chatCompletion;
 };
 
 export { generateSocialMediaPosts };
