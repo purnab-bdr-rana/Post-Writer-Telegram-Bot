@@ -71,8 +71,8 @@ bot.command("generate", async (ctx) => {
       { tgId: from.id },
       {
         $inc: {
-          promptToken: generatedText.usage.promptTokens, 
-          completionTokens: generatedText.usage.completionTokens,
+          promptToken: generatedText.usage.prompt_tokens, 
+          completionTokens: generatedText.usage.completion_tokens,
         },
       }
     );
