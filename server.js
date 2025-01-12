@@ -1,11 +1,18 @@
+import express from "express";
 import { Telegraf } from "telegraf";
+import bodyParser from "body-parser";
 import connectDB from "./src/config/db.js";
 import User from "./src/models/User.js";
 import Event from "./src/models/Event.js";
 import { generateSocialMediaPosts } from "./src/utils/groqClient.js";
 
+const app = express();
 const bot = new Telegraf(process.env.BOT_KEY);
 
+// Use body parser for parsing incoming requests
+app.use(bodyParser.json());
+
+// Connect to the database
 try {
   await connectDB();
 } catch (error) {
@@ -13,6 +20,11 @@ try {
   process.exit(1);
 }
 
+// Webhook endpoint where Telegram will send updates
+app.post(`/webhook/${process.env.BOT_KEY}`, (req, res) => {
+  bot.handleUpdate(req.body);
+  res.send("OK");
+});
 
 bot.start(async (ctx) => {
   const from = ctx.update.message.from;
@@ -71,7 +83,7 @@ bot.command("generate", async (ctx) => {
       { tgId: from.id },
       {
         $inc: {
-          promptToken: generatedText.usage.prompt_tokens, 
+          promptToken: generatedText.usage.prompt_tokens,
           completionTokens: generatedText.usage.completion_tokens,
         },
       }
@@ -112,6 +124,17 @@ bot.on("text", async (ctx) => {
 });
 
 bot.launch();
+
+// Configure webhook on Telegram
+bot.telegram.setWebhook(
+  `https://your-render-app-url/webhook/${process.env.BOT_KEY}`
+);
+
+// Start the server
+const port = process.env.PORT || 3000;
+app.listen(port, () => {
+  console.log(`Server is running on port ${port}`);
+});
 
 process.once("SIGINT", () => bot.stop("SIGINT"));
 process.once("SIGTERM", () => bot.stop("SIGTERM"));
