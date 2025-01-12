@@ -4,61 +4,56 @@ import bodyParser from "body-parser";
 import connectDB from "./src/config/db.js";
 import User from "./src/models/User.js";
 import Event from "./src/models/Event.js";
-import { generateSocialMediaPosts } from "./src/utils/groqClient.js";
+import { chat, generateSocialMediaPosts } from "./src/utils/groqClient.js";
 
 const app = express();
 const bot = new Telegraf(process.env.BOT_KEY);
 
-// Use body parser for parsing incoming requests
+// Middleware
 app.use(bodyParser.json());
 
-// Connect to the database
-try {
-  await connectDB();
-} catch (error) {
-  console.error("Database connection error:", error);
-  process.exit(1);
-}
+// Database Connection
+const initializeDatabase = async () => {
+  try {
+    await connectDB();
+    console.log("Database connected successfully.");
+  } catch (error) {
+    console.error("Database connection error:", error);
+    process.exit(1);
+  }
+};
 
-// Helper function to set the webhook for Telegram
+// Set Telegram Webhook
 const setWebhook = async () => {
   try {
-    await bot.telegram.setWebhook(
-      `https://post-writer-telegram-bot.onrender.com/webhook/${process.env.BOT_KEY}`
-    );
-    console.log("Webhook set successfully.");
+    const webhookURL = `https://post-writer-telegram-bot.onrender.com/webhook/${process.env.BOT_KEY}`;
+    await bot.telegram.setWebhook(webhookURL);
+    console.log("Webhook set successfully at:", webhookURL);
   } catch (error) {
     console.error("Error setting webhook:", error);
   }
 };
 
-// Webhook endpoint where Telegram will send updates
-app.post(`/webhook/${process.env.BOT_KEY}`, (req, res) => {
-  console.log("Received webhook update:", req.body); // Log the incoming update for debugging
-  bot.handleUpdate(req.body);
-  res.send("OK");
-});
-
-// Start command
+// Telegram Bot Commands
 bot.start(async (ctx) => {
-  const from = ctx.update.message.from;
+  const { id, first_name, last_name, is_bot, username } =
+    ctx.update.message.from;
 
   try {
     await User.findOneAndUpdate(
-      { tgId: from.id },
+      { tgId: id },
       {
         $setOnInsert: {
-          firstName: from.first_name,
-          lastName: from.last_name,
-          isBot: from.is_bot,
-          username: from.username,
+          firstName: first_name,
+          lastName: last_name,
+          isBot: is_bot,
+          username,
         },
       },
       { upsert: true, new: true }
     );
-
     await ctx.reply(
-      `Hello ${from.first_name},! 👋 I'm your social media content assistant bot. Log your daily events, and I'll help you create engaging posts tailored for LinkedIn, Facebook, and Twitter. 🎯 Effortless content creation at your fingertips! 🚀 Start by logging your first event. 😊`
+      `Hello ${first_name}! 👋 I'm your social media content assistant bot. Log your daily events, and I'll help you create engaging posts for LinkedIn, Facebook, and Twitter. Start by logging your first event! 😊`
     );
   } catch (error) {
     console.error("Error in /start:", error);
@@ -66,89 +61,127 @@ bot.start(async (ctx) => {
   }
 });
 
-// Generate command
 bot.command("generate", async (ctx) => {
-  const from = ctx.update.message.from;
-  const { message_id: waitingMessageId } = await ctx.reply(
-    `Please hold on while I prepare your posts. This won't take long. 😊`
+  const { id } = ctx.update.message.from;
+  const waitingMessage = await ctx.reply(
+    "Please wait while I prepare your posts..."
   );
 
-  const startOfDay = new Date();
-  startOfDay.setHours(0, 0, 0, 0);
-  const endOfDay = new Date();
-  endOfDay.setHours(23, 59, 59, 999);
-
   try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
     const events = await Event.find({
-      tgId: from.id,
-      createdAt: { $gte: startOfDay, $lte: endOfDay },
+      tgId: id,
+      createdAt: { $gte: today, $lte: new Date() },
     });
 
-    if (events.length === 0) {
-      await ctx.deleteMessage(waitingMessageId);
-      await ctx.reply(
-        "Looks like there are no events logged for today. 🚀 Start by logging your first event. 😊"
+    if (!events.length) {
+      await ctx.deleteMessage(waitingMessage.message_id);
+      return await ctx.reply(
+        "No events logged for today. Start by logging your first event! 😊"
       );
-      return;
     }
 
     const generatedText = await generateSocialMediaPosts(events);
-
-    await User.findOneAndUpdate(
-      { tgId: from.id },
-      {
-        $inc: {
-          promptToken: generatedText.usage.prompt_tokens,
-          completionTokens: generatedText.usage.completion_tokens,
-        },
-      }
-    );
-
-    await ctx.deleteMessage(waitingMessageId);
+    await ctx.deleteMessage(waitingMessage.message_id);
     await ctx.reply(generatedText.choices[0]?.message?.content);
   } catch (error) {
     console.error("Error in /generate:", error);
-    await ctx.deleteMessage(waitingMessageId);
+    await ctx.deleteMessage(waitingMessage.message_id);
     await ctx.reply("Oops! Something went wrong. Please try again later.");
   }
 });
 
-// Help command
-bot.help((ctx) => {
-  ctx.reply(
-    "Need assistance? Feel free to reach out to our support team at 12230035.gcit@rub.edu.bt!"
-  );
-});
-
-// Text event for logging user input
-bot.on("text", async (ctx) => {
-  const from = ctx.update.message.from;
-  const message = ctx.update.message.text;
+bot.command("myevents", async (ctx) => {
+  const { id } = ctx.update.message.from;
 
   try {
-    await Event.create({
-      text: message,
-      tgId: from.id,
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const events = await Event.find({
+      tgId: id,
+      createdAt: { $gte: today, $lte: new Date() },
     });
 
-    await ctx.reply(
-      "Got it! 👍 Keep sharing your thoughts with me. When you're ready, just type /generate to create your posts."
-    );
+    if (!events.length) {
+      return await ctx.reply("No events logged for today. 😊");
+    }
+
+    const eventList = events
+      .map((event, index) => `${index + 1}. ${event.text}`)
+      .join("\n");
+    await ctx.reply(`Here are your events for today:\n\n${eventList}`);
   } catch (error) {
-    console.error("Error in saving event:", error);
+    console.error("Error in /myevents:", error);
     await ctx.reply("Oops! Something went wrong. Please try again later.");
   }
 });
 
-// Set webhook when app starts
-setWebhook();
+bot.command("chat", async (ctx) => {
+  const { id, first_name } = ctx.update.message.from;
+  const messageParts = ctx.message.text.split(" ");
+  const userQuery = messageParts.slice(1).join(" ");
 
-// Start the Express server
-const port = process.env.PORT || 3000;
-app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
+  if (!userQuery) {
+    return await ctx.reply(
+      `Hi ${first_name}, please provide a question or topic after the /chat command. For example: /chat What is the best way to learn programming?`
+    );
+  }
+
+  const waitingMessage = await ctx.reply(
+    "Let me think about that... 🤔 Please hold on."
+  );
+
+  try {
+    const generatedText = chat(userQuery);
+    await ctx.deleteMessage(waitingMessage.message_id);
+    await ctx.reply(generatedText);
+  } catch (error) {
+    console.error("Error in /chat:", error);
+    await ctx.deleteMessage(waitingMessage.message_id);
+    await ctx.reply("Oops! Something went wrong. Please try again later.");
+  }
 });
 
-// Graceful shutdown handling
+// Handle Text Messages
+bot.on("text", async (ctx) => {
+  const { id } = ctx.update.message.from;
+  const text = ctx.update.message.text;
+
+  try {
+    await Event.create({ text, tgId: id });
+    await ctx.reply(
+      "Got it! 👍 Keep sharing your thoughts. When you're ready, type /generate to create your posts."
+    );
+  } catch (error) {
+    console.error("Error in text handling:", error);
+    await ctx.reply("Oops! Something went wrong. Please try again later.");
+  }
+});
+
+// Webhook Endpoint
+app.post(`/webhook/${process.env.BOT_KEY}`, (req, res) => {
+  bot.handleUpdate(req.body);
+  res.send("OK");
+});
+
+// Graceful Shutdown
 process.once("SIGINT", () => bot.stop("SIGINT"));
 process.once("SIGTERM", () => bot.stop("SIGTERM"));
+
+// Start Server
+const startServer = () => {
+  const port = process.env.PORT || 3000;
+  app.listen(port, () => {
+    console.log(`Server is running on port ${port}`);
+  });
+};
+
+// Initialize App
+(async () => {
+  await initializeDatabase();
+  await setWebhook();
+  startServer();
+})();
