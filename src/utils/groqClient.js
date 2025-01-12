@@ -4,7 +4,10 @@ const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 const generateSocialMediaPosts = async (events) => {
   const systemPrompt = `
-  Act as a senior copywriter with expertise in crafting engaging and impactful social media content. Your role is to write tailored posts for LinkedIn, Facebook, and Twitter, adapting the tone and style for each platform's audience.
+  Act as a senior copywriter with expertise in crafting engaging and impactful social media content. Your role is to write tailored posts for LinkedIn, Facebook, and Twitter, adapting the tone and style for each platform's audience. When formatting responses, ensure that:
+
+  1. Lists are presented in plain text without Markdown-style formatting (e.g., avoid using ** for bold).
+  2. Proper spacing is maintained for readability.
 `;
 
   const prompt = `

@@ -183,7 +183,8 @@ bot.command("deleteevent", async (ctx) => {
     });
 
     // Ask the user to select an event to delete
-    eventList += "\nPlease reply with the number of the event you want to delete, or type 0 to cancel.";
+    eventList +=
+      "\nPlease reply with the number of the event you want to delete, or type 0 to cancel.";
 
     await ctx.reply(eventList);
 
@@ -191,7 +192,9 @@ bot.command("deleteevent", async (ctx) => {
     deleteEventInProgress[from.id] = events;
   } catch (error) {
     console.error("Error fetching events:", error);
-    await ctx.reply("Oops! Something went wrong while fetching your events. Please try again later.");
+    await ctx.reply(
+      "Oops! Something went wrong while fetching your events. Please try again later."
+    );
   }
 });
 
@@ -207,14 +210,18 @@ bot.on("text", async (ctx) => {
 
     // If the user cancels by typing 0
     if (message === "0") {
-      await ctx.reply("Event deletion has been canceled. No events were deleted. 😊");
+      await ctx.reply(
+        "Event deletion has been canceled. No events were deleted. 😊"
+      );
       deleteEventInProgress[from.id] = undefined; // Remove from the delete process
       return;
     }
 
     // Validate the event number
     if (isNaN(eventIndex) || eventIndex < 0 || eventIndex >= events.length) {
-      await ctx.reply("Invalid event number. Please provide a valid event number from the list.");
+      await ctx.reply(
+        "Invalid event number. Please provide a valid event number from the list."
+      );
       return;
     }
 
@@ -225,13 +232,17 @@ bot.on("text", async (ctx) => {
       // Delete the selected event
       await Event.deleteOne({ _id: eventToDelete._id });
 
-      await ctx.reply(`Event: "${eventToDelete.text}" has been deleted successfully. 🗑️`);
+      await ctx.reply(
+        `Event: "${eventToDelete.text}" has been deleted successfully. 🗑️`
+      );
 
       // Remove the user from the delete process
       deleteEventInProgress[from.id] = undefined;
     } catch (error) {
       console.error("Error deleting event:", error);
-      await ctx.reply("Oops! Something went wrong while deleting the event. Please try again later.");
+      await ctx.reply(
+        "Oops! Something went wrong while deleting the event. Please try again later."
+      );
     }
   } else {
     // If the user is not in delete mode, handle it as a new event
@@ -250,7 +261,6 @@ bot.on("text", async (ctx) => {
     }
   }
 });
-
 
 // Webhook Endpoint
 app.post(`/webhook/${process.env.BOT_KEY}`, (req, res) => {
