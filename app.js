@@ -94,8 +94,12 @@ bot.command("generate", async (ctx) => {
 
 bot.command("myevents", async (ctx) => {
   const { id } = ctx.update.message.from;
+  const waitingMessage = await ctx.reply(
+    "Please wait while I fetch your events for the day..."
+  );
 
   try {
+    // Fetch today's events
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -105,15 +109,20 @@ bot.command("myevents", async (ctx) => {
     });
 
     if (!events.length) {
-      return await ctx.reply("No events logged for today. 😊");
+      await ctx.deleteMessage(waitingMessage.message_id);
+      return await ctx.reply("You haven't logged any events for today. 😊");
     }
 
     const eventList = events
       .map((event, index) => `${index + 1}. ${event.text}`)
       .join("\n");
+
+    // Remove waiting message and display events
+    await ctx.deleteMessage(waitingMessage.message_id);
     await ctx.reply(`Here are your events for today:\n\n${eventList}`);
   } catch (error) {
     console.error("Error in /myevents:", error);
+    await ctx.deleteMessage(waitingMessage.message_id);
     await ctx.reply("Oops! Something went wrong. Please try again later.");
   }
 });
@@ -168,7 +177,6 @@ bot.command("deleteevent", async (ctx) => {
       return;
     }
 
-    // Show the events for today starting from 1
     let eventList = "Here are your events for today:\n\n";
     events.forEach((event, index) => {
       eventList += `${index + 1}. ${event.text}\n`;
