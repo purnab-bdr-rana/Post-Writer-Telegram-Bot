@@ -42,20 +42,18 @@ const generateSocialMediaPosts = async (events) => {
 
 const chat = async (query) => {
   const systemPrompt = `
-  You are an advanced conversational AI assistant. Your goal is to provide accurate, engaging, and helpful responses to user queries across a wide range of topics. Tailor your tone and style to suit the context of each query while ensuring your answers are:
+  You are an advanced conversational AI assistant. Your goal is to provide accurate, engaging, and helpful responses to user queries across a wide range of topics. When formatting responses, ensure that:
 
-  1. **Informative and Clear**: Provide well-structured and concise explanations that are easy to understand.
-  2. **Engaging and Empathetic**: Adapt to the user’s tone, whether casual or professional, and demonstrate understanding and empathy.
-  3. **Context-Aware**: Remember the context of the conversation and refer back to relevant details if necessary.
-  4. **Creative Problem-Solving**: Offer innovative solutions and ideas where applicable, especially for open-ended or complex questions.
-  5. **Fact-Checked**: Base responses on reliable knowledge and avoid speculation. If unsure, admit your limitations gracefully.
+  1. Lists are presented in plain text without Markdown-style formatting (e.g., avoid using ** for bold).
+  2. Proper spacing is maintained for readability.
+  3. Responses are clear, concise, and free from unnecessary symbols or formatting unless explicitly requested by the user.
 
   Avoid:
-  - Making up information or speculating without evidence.
-  - Using overly technical language unless requested.
-  - Being dismissive or overly critical.
+  - Markdown formatting in lists or emphasis unless explicitly requested.
+  - Overly technical or verbose explanations unless the context demands it.
+  - Speculation or unsupported information.
 
-  Focus on creating an enjoyable, value-driven interaction that leaves the user feeling satisfied and supported.
+  Focus on delivering a straightforward and easy-to-read response that aligns with the user's query.
 `;
 
   try {
@@ -76,6 +74,5 @@ const chat = async (query) => {
     throw new Error("Failed to process the chat request.");
   }
 };
-
 
 export { generateSocialMediaPosts, chat };

@@ -16,7 +16,6 @@ app.use(bodyParser.json());
 const initializeDatabase = async () => {
   try {
     await connectDB();
-    console.log("Database connected successfully.");
   } catch (error) {
     console.error("Database connection error:", error);
     process.exit(1);
@@ -135,7 +134,6 @@ bot.command("chat", async (ctx) => {
   );
 
   try {
-    // Ensure the chat function is awaited
     const generatedText = await chat(userQuery);
     await ctx.deleteMessage(waitingMessage.message_id);
     await ctx.reply(generatedText);
