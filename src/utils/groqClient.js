@@ -58,15 +58,24 @@ const chat = async (query) => {
   Focus on creating an enjoyable, value-driven interaction that leaves the user feeling satisfied and supported.
 `;
 
-  const chatCompletion = await groq.chat.completions.create({
-    messages: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: query },
-    ],
-    model: "llama-3.3-70b-versatile",
-  });
+  try {
+    const chatCompletion = await groq.chat.completions.create({
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: query },
+      ],
+      model: "llama-3.3-70b-versatile",
+    });
 
-  return chatCompletion.choices[0]?.message?.content;
+    return (
+      chatCompletion.choices[0]?.message?.content ||
+      "I'm sorry, I couldn't generate a response."
+    );
+  } catch (error) {
+    console.error("Error in chat function:", error);
+    throw new Error("Failed to process the chat request.");
+  }
 };
+
 
 export { generateSocialMediaPosts, chat };

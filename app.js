@@ -135,7 +135,8 @@ bot.command("chat", async (ctx) => {
   );
 
   try {
-    const generatedText = chat(userQuery);
+    // Ensure the chat function is awaited
+    const generatedText = await chat(userQuery);
     await ctx.deleteMessage(waitingMessage.message_id);
     await ctx.reply(generatedText);
   } catch (error) {
@@ -145,21 +146,105 @@ bot.command("chat", async (ctx) => {
   }
 });
 
-// Handle Text Messages
-bot.on("text", async (ctx) => {
-  const { id } = ctx.update.message.from;
-  const text = ctx.update.message.text;
+// Create a map to track users in the process of deleting events
+const deleteEventInProgress = {};
+
+// Command to start event deletion
+bot.command("deleteevent", async (ctx) => {
+  const from = ctx.update.message.from;
+
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
+  const endOfDay = new Date();
+  endOfDay.setHours(23, 59, 59, 999);
 
   try {
-    await Event.create({ text, tgId: id });
-    await ctx.reply(
-      "Got it! 👍 Keep sharing your thoughts. When you're ready, type /generate to create your posts."
-    );
+    // Fetch events for the user for today
+    const events = await Event.find({
+      tgId: from.id,
+      createdAt: { $gte: startOfDay, $lte: endOfDay },
+    });
+
+    if (events.length === 0) {
+      await ctx.reply("You have no events logged for today to delete. 😊");
+      return;
+    }
+
+    // Show the events for today starting from 1
+    let eventList = "Here are your events for today:\n\n";
+    events.forEach((event, index) => {
+      eventList += `${index + 1}. ${event.text}\n`;
+    });
+
+    // Ask the user to select an event to delete
+    eventList += "\nPlease reply with the number of the event you want to delete, or type 0 to cancel.";
+
+    await ctx.reply(eventList);
+
+    // Store the events and the user ID to track their request
+    deleteEventInProgress[from.id] = events;
   } catch (error) {
-    console.error("Error in text handling:", error);
-    await ctx.reply("Oops! Something went wrong. Please try again later.");
+    console.error("Error fetching events:", error);
+    await ctx.reply("Oops! Something went wrong while fetching your events. Please try again later.");
   }
 });
+
+// Handle text messages
+bot.on("text", async (ctx) => {
+  const from = ctx.update.message.from;
+  const message = ctx.update.message.text;
+
+  // Check if the user is in the process of deleting an event
+  if (deleteEventInProgress[from.id]) {
+    const events = deleteEventInProgress[from.id];
+    const eventIndex = parseInt(message) - 1; // Convert to zero-based index
+
+    // If the user cancels by typing 0
+    if (message === "0") {
+      await ctx.reply("Event deletion has been canceled. No events were deleted. 😊");
+      deleteEventInProgress[from.id] = undefined; // Remove from the delete process
+      return;
+    }
+
+    // Validate the event number
+    if (isNaN(eventIndex) || eventIndex < 0 || eventIndex >= events.length) {
+      await ctx.reply("Invalid event number. Please provide a valid event number from the list.");
+      return;
+    }
+
+    // Proceed to delete the selected event
+    try {
+      const eventToDelete = events[eventIndex];
+
+      // Delete the selected event
+      await Event.deleteOne({ _id: eventToDelete._id });
+
+      await ctx.reply(`Event: "${eventToDelete.text}" has been deleted successfully. 🗑️`);
+
+      // Remove the user from the delete process
+      deleteEventInProgress[from.id] = undefined;
+    } catch (error) {
+      console.error("Error deleting event:", error);
+      await ctx.reply("Oops! Something went wrong while deleting the event. Please try again later.");
+    }
+  } else {
+    // If the user is not in delete mode, handle it as a new event
+    try {
+      await Event.create({
+        text: message,
+        tgId: from.id,
+      });
+
+      await ctx.reply(
+        "Got it! 👍 Keep sharing your thoughts with me. When you're ready, just type /generate to create your posts."
+      );
+    } catch (error) {
+      console.error("Error in saving event:", error);
+      await ctx.reply("Oops! Something went wrong. Please try again later.");
+    }
+  }
+});
+
 
 // Webhook Endpoint
 app.post(`/webhook/${process.env.BOT_KEY}`, (req, res) => {
