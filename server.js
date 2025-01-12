@@ -127,7 +127,7 @@ bot.launch();
 
 // Configure webhook on Telegram
 bot.telegram.setWebhook(
-  `https://your-render-app-url/webhook/${process.env.BOT_KEY}`
+  `https://post-writer-telegram-bot.onrender.com/webhook/${process.env.BOT_KEY}`
 );
 
 // Start the server
