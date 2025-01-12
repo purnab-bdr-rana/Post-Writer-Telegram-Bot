@@ -20,12 +20,26 @@ try {
   process.exit(1);
 }
 
+// Helper function to set the webhook for Telegram
+const setWebhook = async () => {
+  try {
+    await bot.telegram.setWebhook(
+      `https://post-writer-telegram-bot.onrender.com/webhook/${process.env.BOT_KEY}`
+    );
+    console.log("Webhook set successfully.");
+  } catch (error) {
+    console.error("Error setting webhook:", error);
+  }
+};
+
 // Webhook endpoint where Telegram will send updates
 app.post(`/webhook/${process.env.BOT_KEY}`, (req, res) => {
+  console.log("Received webhook update:", req.body); // Log the incoming update for debugging
   bot.handleUpdate(req.body);
   res.send("OK");
 });
 
+// Start command
 bot.start(async (ctx) => {
   const from = ctx.update.message.from;
 
@@ -52,6 +66,7 @@ bot.start(async (ctx) => {
   }
 });
 
+// Generate command
 bot.command("generate", async (ctx) => {
   const from = ctx.update.message.from;
   const { message_id: waitingMessageId } = await ctx.reply(
@@ -98,12 +113,14 @@ bot.command("generate", async (ctx) => {
   }
 });
 
+// Help command
 bot.help((ctx) => {
   ctx.reply(
     "Need assistance? Feel free to reach out to our support team at 12230035.gcit@rub.edu.bt!"
   );
 });
 
+// Text event for logging user input
 bot.on("text", async (ctx) => {
   const from = ctx.update.message.from;
   const message = ctx.update.message.text;
@@ -123,18 +140,15 @@ bot.on("text", async (ctx) => {
   }
 });
 
-bot.launch();
+// Set webhook when app starts
+setWebhook();
 
-// Configure webhook on Telegram
-bot.telegram.setWebhook(
-  `https://post-writer-telegram-bot.onrender.com/webhook/${process.env.BOT_KEY}`
-);
-
-// Start the server
+// Start the Express server
 const port = process.env.PORT || 3000;
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });
 
+// Graceful shutdown handling
 process.once("SIGINT", () => bot.stop("SIGINT"));
 process.once("SIGTERM", () => bot.stop("SIGTERM"));
