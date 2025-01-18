@@ -49,7 +49,7 @@ Follow the steps below to set up the **Post Writer** Telegram bot locally:
    MONGO_CONNECT_STRING=your-mongoDb-connecting-string
    GROQ_API_KEY=your-qroq-api-key
  
-4. Run the bot::
+4. Run the bot:
 
    ```bash
    npm run dev
