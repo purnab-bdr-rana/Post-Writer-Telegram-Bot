@@ -35,3 +35,22 @@ Follow the steps below to set up the **Post Writer** Telegram bot locally:
    ```bash
    git clone https://github.com/purna-bdr-rana/Post-Writer-Telegram-Bot.git
    cd Post-Writer-Telegram-Bot
+   
+2. Install dependencies:
+
+   ```bash
+ npm install
+ 
+3. Create a .env file in the root directory and add your bot token and qroq API keys:
+
+   ```bash
+BOT_KEY=your-telegram-bot-token
+MONGO_CONNECT_STRING=your-mongoDb-connecting-string
+GROQ_API_KEY=your-qroq-api-key
+ 
+4. Run the bot::
+
+   ```bash
+npm run dev
+
+
